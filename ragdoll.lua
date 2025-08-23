@@ -1,40 +1,46 @@
--- Script ROBUSTO: fuerza velocidad y salto, ignora cambios externos
+-- Ultra Anti-Override Speed Script (Velocidad 100, inmune a cualquier cambio externo)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
-local SPEED = 150-- Cambia a tu velocidad deseada
-local JUMP = 100 -- Cambia a tu salto deseado
+local VELOCIDAD = 100
 
-local function lockStats(hum)
-    -- Bucle que fuerza velocidad y salto constante, y corrige estados
-    RunService.Stepped:Connect(function()
+local function fuerzaVelocidad(hum)
+    -- El bucle mantiene la velocidad a 100 todo el tiempo, sin importar lo que pase
+    RunService.RenderStepped:Connect(function()
         if hum and hum.Parent then
-            -- Fuerza velocidad y salto
-            if hum.WalkSpeed ~= SPEED then
-                hum.WalkSpeed = SPEED
-            end
-            if hum.JumpPower ~= JUMP then
-                hum.JumpPower = JUMP
-            end
-            -- Previene PlatformStand y estados no deseados
-            if hum.PlatformStand then
+            -- Borra cualquier estado que limite la movilidad
+            pcall(function()
+                if hum.WalkSpeed ~= VELOCIDAD then
+                    hum.WalkSpeed = VELOCIDAD
+                end
                 hum.PlatformStand = false
-            end
-            local state = hum:GetState()
-            if state == Enum.HumanoidStateType.Physics or state == Enum.HumanoidStateType.Ragdoll then
-                hum:ChangeState(Enum.HumanoidStateType.Running)
-            end
+                if hum:GetState() ~= Enum.HumanoidStateType.Running then
+                    hum:ChangeState(Enum.HumanoidStateType.Running)
+                end
+                -- Corrige si algún script te detiene
+                if hum.JumpPower < 50 then
+                    hum.JumpPower = 100
+                end
+                if hum.AutoRotate == false then
+                    hum.AutoRotate = true
+                end
+                if hum.SeatPart then
+                    hum.Sit = false
+                end
+            end)
         end
     end)
 end
 
-local function onChar(char)
+local function aplicar()
+    local char = lp.Character or lp.CharacterAdded:Wait()
     local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid")
-    lockStats(hum)
+    fuerzaVelocidad(hum)
 end
 
-if lp.Character then
-    onChar(lp.Character)
-end
-lp.CharacterAdded:Connect(onChar)
+aplicar()
+lp.CharacterAdded:Connect(function()
+    wait(0.1)
+    aplicar()
+end)
