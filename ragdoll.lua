@@ -1,54 +1,40 @@
--- Script gigante robusto para Roblox - escala todo y corrige el movimiento
+-- Script ROBUSTO: fuerza velocidad y salto, ignora cambios externos
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
-local SCALE = 3 -- Cambia este número para el tamaño
+local SPEED = 32 -- Cambia a tu velocidad deseada
+local JUMP = 100 -- Cambia a tu salto deseado
 
-local function scaleChar(char)
-    -- Escala las partes físicas y sus accesorios
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Size = part.Size * SCALE
-            part.Massless = false
-            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) -- Fricción normal
-            -- Corrige el pivote si es RootPart para evitar bugs de físicas
-            if part.Name == "HumanoidRootPart" then
-                part.RootPriority = 127
+local function lockStats(hum)
+    -- Bucle que fuerza velocidad y salto constante, y corrige estados
+    RunService.Stepped:Connect(function()
+        if hum and hum.Parent then
+            -- Fuerza velocidad y salto
+            if hum.WalkSpeed ~= SPEED then
+                hum.WalkSpeed = SPEED
             end
-        elseif part:IsA("SpecialMesh") then
-            part.Scale = part.Scale * SCALE
+            if hum.JumpPower ~= JUMP then
+                hum.JumpPower = JUMP
+            end
+            -- Previene PlatformStand y estados no deseados
+            if hum.PlatformStand then
+                hum.PlatformStand = false
+            end
+            local state = hum:GetState()
+            if state == Enum.HumanoidStateType.Physics or state == Enum.HumanoidStateType.Ragdoll then
+                hum:ChangeState(Enum.HumanoidStateType.Running)
+            end
         end
-    end
-
-    -- Corrige la fricción para evitar que resbales
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
-    end
-
-    -- Ajusta el HipHeight del Humanoid para que no camines "hundido"
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.HipHeight = hum.HipHeight * SCALE
-        -- Opcional: fuerza WalkSpeed normal
-        hum.WalkSpeed = 16
-        hum.JumpPower = 50
-    end
-
-    -- Sube al jugador para evitar que quede atrapado
-    if root then
-        root.CFrame = root.CFrame + Vector3.new(0, 10 * SCALE, 0)
-    end
-end
-
-local function applyAlways()
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    scaleChar(char)
-    -- Mantén el tamaño tras respawn
-    lp.CharacterAdded:Connect(function(c)
-        wait(0.2)
-        scaleChar(c)
     end)
 end
 
-applyAlways()
+local function onChar(char)
+    local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid")
+    lockStats(hum)
+end
+
+if lp.Character then
+    onChar(lp.Character)
+end
+lp.CharacterAdded:Connect(onChar)
