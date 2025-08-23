@@ -1,46 +1,26 @@
--- Ultra Anti-Override Speed Script (Velocidad 100, inmune a cualquier cambio externo)
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local lp = Players.LocalPlayer
-
-local VELOCIDAD = 100
-
-local function fuerzaVelocidad(hum)
-    -- El bucle mantiene la velocidad a 100 todo el tiempo, sin importar lo que pase
-    RunService.RenderStepped:Connect(function()
-        if hum and hum.Parent then
-            -- Borra cualquier estado que limite la movilidad
-            pcall(function()
-                if hum.WalkSpeed ~= VELOCIDAD then
-                    hum.WalkSpeed = VELOCIDAD
-                end
-                hum.PlatformStand = false
-                if hum:GetState() ~= Enum.HumanoidStateType.Running then
-                    hum:ChangeState(Enum.HumanoidStateType.Running)
-                end
-                -- Corrige si algún script te detiene
-                if hum.JumpPower < 50 then
-                    hum.JumpPower = 100
-                end
-                if hum.AutoRotate == false then
-                    hum.AutoRotate = true
-                end
-                if hum.SeatPart then
-                    hum.Sit = false
-                end
-            end)
-        end
-    end)
+local function esPuerta(obj)
+    -- Devuelve true si el nombre contiene "door" (no importa mayúsculas o minúsculas)
+    return obj:IsA("BasePart") and string.lower(obj.Name):find("door")
 end
 
-local function aplicar()
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid")
-    fuerzaVelocidad(hum)
+local function volverNoColision(parte)
+    if parte and parte:IsA("BasePart") then
+        parte.CanCollide = false
+        -- Opcional: también puedes hacerla transparente visualmente
+        -- parte.LocalTransparencyModifier = 0.5
+    end
 end
 
-aplicar()
-lp.CharacterAdded:Connect(function()
-    wait(0.1)
-    aplicar()
+-- Busca todas las puertas existentes
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if esPuerta(obj) then
+        volverNoColision(obj)
+    end
+end
+
+-- Detecta puertas nuevas que aparezcan después
+workspace.DescendantAdded:Connect(function(obj)
+    if esPuerta(obj) then
+        volverNoColision(obj)
+    end
 end)
