@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
-local SPEED = 32 -- Cambia a tu velocidad deseada
+local SPEED = 150-- Cambia a tu velocidad deseada
 local JUMP = 100 -- Cambia a tu salto deseado
 
 local function lockStats(hum)
