@@ -1,21 +1,19 @@
--- Super Anti-Ragdoll Agresivo para pruebas extremas
+-- Súper agresivo anti-ragdoll para pruebas extremas
 local lp = game:GetService("Players").LocalPlayer
 
-function forceRestore(char)
+function superAggressiveRestore(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart")
-    -- Elimina constraints al instante
+    -- Elimina constraints
     for _,desc in ipairs(char:GetDescendants()) do
-        if desc:IsA("BallSocketConstraint") or desc:IsA("HingeConstraint") or desc:IsA("RodConstraint")
-        or desc:IsA("SpringConstraint") or desc:IsA("Constraint") then
+        if desc:IsA("Constraint") or desc:IsA("BallSocketConstraint") or desc:IsA("HingeConstraint") or desc:IsA("RodConstraint") or desc:IsA("SpringConstraint") then
             pcall(function() desc:Destroy() end)
         end
     end
-    -- Restaura Motor6D si se destruyen
+    -- Rehace joints básicos si no existen
     for _,limb in ipairs({"Left Arm","Right Arm","Left Leg","Right Leg","Head","Torso","UpperTorso","LowerTorso"}) do
         local part = char:FindFirstChild(limb)
         if part and not part:FindFirstChildWhichIsA("Motor6D") then
-            -- Intenta recrear la joint si es posible (solo si la parte y torso existen)
             local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
             if torso and part ~= torso then
                 local mot = Instance.new("Motor6D")
@@ -26,7 +24,7 @@ function forceRestore(char)
             end
         end
     end
-    -- Previene PlatformStand y Physics
+    -- Prevenir estados físicos y PlatformStand
     if hum then
         hum.PlatformStand = false
         if hum:GetState() == Enum.HumanoidStateType.Physics or hum:GetState() == Enum.HumanoidStateType.Ragdoll then
@@ -42,25 +40,25 @@ function forceRestore(char)
         root.Velocity = Vector3.new(0,0,0)
         root.CFrame = CFrame.new(0, 15, 0)
     end
-    -- Si falta alguna parte crítica, respawnea (hard reset)
+    -- Si falta alguna parte crítica, respawnea
     if not root or not hum then
         lp:LoadCharacter()
     end
 end
 
-function aggressiveLoop(char)
+function ultraLoop(char)
     while char.Parent do
-        forceRestore(char)
-        task.wait(0.05) -- Muy rápido: 20 veces por segundo
+        superAggressiveRestore(char)
+        task.wait(0.03) -- ¡Ultra rápido!
     end
 end
 
 lp.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    aggressiveLoop(char)
+    task.wait(0.3)
+    ultraLoop(char)
 end)
 
 if lp.Character then
-    task.wait(0.5)
-    aggressiveLoop(lp.Character)
+    task.wait(0.3)
+    ultraLoop(lp.Character)
 end
