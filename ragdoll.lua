@@ -1,28 +1,32 @@
--- Este script te permite atravesar todas las partes cuyo nombre contenga "wall" (insensible a mayúsculas)
+local player = game.Players.LocalPlayer
 
-local function esPared(obj)
-    -- Devuelve true si el nombre contiene "wall" (no importa mayúsculas o minúsculas)
-    return obj:IsA("BasePart") and string.lower(obj.Name):find("wall")
+-- Prueba los métodos comunes de VIP en el cliente
+pcall(function() player.IsVIP = true end)
+pcall(function() player.VIP = true end)
+if player:FindFirstChild("IsVIP") then
+    pcall(function() player.IsVIP.Value = true end)
+end
+if player:FindFirstChild("VIP") then
+    pcall(function() player.VIP.Value = true end)
 end
 
-local function volverNoColision(parte)
-    if parte and parte:IsA("BasePart") then
-        parte.CanCollide = false
-        -- Opcional: también puedes hacerla parcialmente transparente solo para ti
-        -- parte.LocalTransparencyModifier = 0.5
+-- También fuerza variables VIP en la GUI
+local plrGui = player:FindFirstChildOfClass("PlayerGui")
+if plrGui then
+    for _, obj in ipairs(plrGui:GetDescendants()) do
+        if string.lower(obj.Name):find("vip") and obj:IsA("GuiObject") then
+            obj.Visible = true
+        end
     end
 end
 
--- Busca todas las paredes existentes
+-- Si hay puertas u objetos ocultos, los vuelve visibles y usables
 for _, obj in ipairs(workspace:GetDescendants()) do
-    if esPared(obj) then
-        volverNoColision(obj)
+    if string.lower(obj.Name):find("vip") then
+        if obj:IsA("BasePart") then
+            obj.Transparency = 0
+            obj.CanCollide = true
+        end
+        obj.Parent = workspace -- Por si están en una carpeta oculta
     end
 end
-
--- Detecta paredes nuevas que aparezcan después
-workspace.DescendantAdded:Connect(function(obj)
-    if esPared(obj) then
-        volverNoColision(obj)
-    end
-end)
