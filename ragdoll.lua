@@ -1,72 +1,50 @@
 local lp = game:GetService("Players").LocalPlayer
 local rs = game:GetService("RunService")
-
-local function protectCharacter(char)
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        humanoid = char:WaitForChild("Humanoid", 5)
-        if not humanoid then return end
-    end
-
-
-    humanoid.StateChanged:Connect(function(old, new)
-        if new == Enum.HumanoidStateType.Physics or new == Enum.HumanoidStateType.Ragdoll or humanoid.PlatformStand then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            humanoid.PlatformStand = false
+local function antiRagdoll(char)
+    local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart")
+    -- Restaurar PlatformStand y evitar Physics
+    hum.StateChanged:Connect(function(_, new)
+        if new == Enum.HumanoidStateType.Physics or new == Enum.HumanoidStateType.Ragdoll then
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end)
-
     rs.RenderStepped:Connect(function()
-        if humanoid.PlatformStand then
-            humanoid.PlatformStand = false
+        hum.PlatformStand = false
+        if root and root.Position.Y < -50 then -- Si se va bajo tierra
+            root.Velocity = Vector3.new(0,0,0)
+            root.CFrame = CFrame.new(0, 10, 0) -- Teleport a zona segura
         end
     end)
-
+    -- Elimina constraints y joints ragdoll
     for _,desc in ipairs(char:GetDescendants()) do
         if desc:IsA("BallSocketConstraint") or desc:IsA("HingeConstraint") or desc:IsA("RodConstraint") or desc:IsA("SpringConstraint") then
             desc:Destroy()
         end
-        if desc:IsA("Motor6D") then
-            desc.Changed:Connect(function(prop)
-                if prop == "Part0" or prop == "Part1" then
-                    -- Restaura la joint si la quieren eliminar
-                    desc.Part0 = char:FindFirstChild(desc.Name:gsub("Joint", ""))
-                    desc.Part1 = char:FindFirstChild(desc.Name:gsub("Joint", ""))
-                end
-            end)
-        end
     end
-
-    -- Monitorea nuevos descendants
     char.DescendantAdded:Connect(function(obj)
         if obj:IsA("BallSocketConstraint") or obj:IsA("HingeConstraint") or obj:IsA("RodConstraint") or obj:IsA("SpringConstraint") then
             obj:Destroy()
-        elseif obj:IsA("Motor6D") then
-            obj.Changed:Connect(function(prop)
-                if prop == "Part0" or prop == "Part1" then
-                    obj.Part0 = char:FindFirstChild(obj.Name:gsub("Joint", ""))
-                    obj.Part1 = char:FindFirstChild(obj.Name:gsub("Joint", ""))
-                end
-            end)
         end
     end)
-
-    -- Si eliminan humanoid o joints, respawnea el character
-    humanoid.AncestryChanged:Connect(function(_, parent)
+    -- Si eliminan RootPart o Humanoid, respawnea
+    root.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            lp:LoadCharacter()
+        end
+    end)
+    hum.AncestryChanged:Connect(function(_, parent)
         if not parent then
             lp:LoadCharacter()
         end
     end)
 end
 
--- Hook para cualquier respawn
-lp.CharacterAdded:Connect(function(char)
+lp.CharacterAdded:Connect(function(c)
     task.wait(1)
-    protectCharacter(char)
+    antiRagdoll(c)
 end)
-
 if lp.Character then
-    protectCharacter(lp.Character)
+    task.wait(1)
+    antiRagdoll(lp.Character)
 end
-
-print("Anti-Ragdoll FULL ROBUSTO activado.")
