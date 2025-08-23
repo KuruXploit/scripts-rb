@@ -1,4 +1,3 @@
--- Anti-Ragdoll Roblox FULL ROBUSTO by Copilot
 local lp = game:GetService("Players").LocalPlayer
 local rs = game:GetService("RunService")
 
@@ -9,7 +8,7 @@ local function protectCharacter(char)
         if not humanoid then return end
     end
 
-    -- Restaurar State si lo intentan poner en Physics o PlatformStand
+
     humanoid.StateChanged:Connect(function(old, new)
         if new == Enum.HumanoidStateType.Physics or new == Enum.HumanoidStateType.Ragdoll or humanoid.PlatformStand then
             humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -17,14 +16,12 @@ local function protectCharacter(char)
         end
     end)
 
-    -- Forzar PlatformStand a false siempre
     rs.RenderStepped:Connect(function()
         if humanoid.PlatformStand then
             humanoid.PlatformStand = false
         end
     end)
 
-    -- Elimina constraints y protege joints
     for _,desc in ipairs(char:GetDescendants()) do
         if desc:IsA("BallSocketConstraint") or desc:IsA("HingeConstraint") or desc:IsA("RodConstraint") or desc:IsA("SpringConstraint") then
             desc:Destroy()
