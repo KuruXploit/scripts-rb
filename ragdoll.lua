@@ -1,10 +1,11 @@
 --[[
-    ANTI-RAGDOLL/ANTI-KNOCKBACK VIP para juegos como Steal a Brainrot, Da Hood, etc.
+    ANTI-RAGDOLL/ANTI-KNOCKBACK VIP para Steal a Brainrot/Da Hood y similares.
     - No te tumba ningún golpe, explosión ni stun.
-    - Puedes moverte, saltar y recibir daño normalmente, pero jamás ragdoll ni platformstand.
-    - GUI pequeña, draggable y clara.
+    - Permite moverse, saltar y morir normalmente.
+    - GUI pequeña, draggable, SIEMPRE funcional.
     - Ctrl+R activa/desactiva protección, F4 muestra/oculta GUI.
-    - Compatible con respawn.
+    - Respawn automático.
+    - 100% compatible Synapse X, Fluxus, Hydrogen, Electron, etc.
 --]]
 
 local Players = game:GetService("Players")
@@ -15,20 +16,22 @@ local player = Players.LocalPlayer
 local enabled = true
 local guiVisible = true
 
+-- Limpia conexiones previas
 local allConns = {}
-
 local function disconnectAll()
     for _,c in pairs(allConns) do
-        if c and c.Connected then pcall(function() c:Disconnect() end) end
+        if c and typeof(c)=="RBXScriptConnection" and c.Connected then
+            pcall(function() c:Disconnect() end)
+        end
     end
     table.clear(allConns)
 end
 
+-- Protección anti-ragdoll/knockback
 local function blockRagdoll()
-    local char = player.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid",3)
+    local root = char:WaitForChild("HumanoidRootPart",3)
     if not humanoid or not root then return end
 
     disconnectAll()
@@ -43,34 +46,32 @@ local function blockRagdoll()
         [Enum.HumanoidStateType.Seated] = true
     }
 
-    -- Reparación cada frame
-    table.insert(allConns, RunService.Heartbeat:Connect(function()
+    -- Reparación cada frame (sin afectar movimiento normal)
+    table.insert(allConns, RunService.Stepped:Connect(function()
         if not enabled then return end
-        -- Forzar estado "Running" si intentan tumbarte
         local state = humanoid:GetState()
         if blockStates[state] then
             humanoid:ChangeState(Enum.HumanoidStateType.Running)
         end
         if humanoid.PlatformStand then humanoid.PlatformStand = false end
         if humanoid.Sit then humanoid.Sit = false end
-        -- Limitar velocities físicas (permite saltos y movimiento, pero no knockback fuerte)
+        -- Limita knockback físico sin quitar saltos ni el movimiento
         root.AssemblyAngularVelocity = Vector3.new(0,0,0)
+        -- Permite saltar y moverse, solo bloquea empuje excesivo:
         root.AssemblyLinearVelocity = Vector3.new(
-            math.clamp(root.AssemblyLinearVelocity.X, -36, 36),
-            math.clamp(root.AssemblyLinearVelocity.Y, -75, 75),
-            math.clamp(root.AssemblyLinearVelocity.Z, -36, 36)
+            math.clamp(root.AssemblyLinearVelocity.X, -38, 38),
+            root.AssemblyLinearVelocity.Y,
+            math.clamp(root.AssemblyLinearVelocity.Z, -38, 38)
         )
     end))
 
-    -- Reparación en cambios de estado
+    -- Reparación en eventos de cambio de estado
     table.insert(allConns, humanoid.StateChanged:Connect(function(_, newState)
         if not enabled then return end
         if blockStates[newState] then
             humanoid:ChangeState(Enum.HumanoidStateType.Running)
         end
     end))
-
-    -- Reparación en cambios de propiedades peligrosas
     table.insert(allConns, humanoid:GetPropertyChangedSignal("PlatformStand"):Connect(function()
         if enabled and humanoid.PlatformStand then
             humanoid.PlatformStand = false
@@ -88,12 +89,12 @@ end
 -----------------------
 local function createMiniGUI()
     local guiName = "AntiRagdollBrainrotMiniGUI"
-    local gui = game:GetService("CoreGui"):FindFirstChild(guiName) or player.PlayerGui:FindFirstChild(guiName)
+    local gui = game:GetService("CoreGui"):FindFirstChild(guiName)
     if gui then gui:Destroy() end
 
     gui = Instance.new("ScreenGui")
     gui.Name = guiName
-    gui.Parent = (pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui")) or player.PlayerGui
+    gui.Parent = game:GetService("CoreGui")
     gui.ResetOnSpawn = false
     gui.Enabled = guiVisible
 
@@ -113,7 +114,7 @@ local function createMiniGUI()
     title.Font = Enum.Font.Code
     title.TextSize = 16
     title.TextColor3 = Color3.fromRGB(0, 220, 255)
-    title.Text = "Anti-Ragdoll/Knock Brainrot"
+    title.Text = "Anti-Ragdoll Brainrot VIP"
 
     local toggle = Instance.new("TextButton", frame)
     toggle.Size = UDim2.new(0.9, 0, 0, 23)
@@ -167,9 +168,9 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.F4 then
         guiVisible = not guiVisible
         local guiName = "AntiRagdollBrainrotMiniGUI"
-        local gui = game:GetService("CoreGui"):FindFirstChild(guiName) or player.PlayerGui:FindFirstChild(guiName)
+        local gui = game:GetService("CoreGui"):FindFirstChild(guiName)
         if gui then gui.Enabled = guiVisible end
     end
 end)
 
-print("🛡️ Anti-Ragdoll/Knockback VIP para STEAL A BRAINROT ACTIVADO: no te pueden tumbar aunque te peguen.")
+print("🛡️ Anti-Ragdoll/Knockback VIP para Steal a Brainrot/Da Hood ACTIVADO: no te pueden tumbar aunque te peguen.")
