@@ -1,10 +1,11 @@
---[[ 
-    ANTI-RAGDOLL ULTRA ROBUSTO
+--[[
+    ANTI-RAGDOLL ANTI-KNOCKBACK VIP ULTRA ROBUSTO
     - Español en GUI y mensajes.
-    - No te caes, no te tumban, no te quedas ragdoll ni physics ni platformstand.
-    - Puedes moverte, saltar, correr y recibir daño normalmente.
+    - Evita 100% ragdoll, stun, knockback, física, platformstand, sit, gettingup, fallingdown.
+    - Puedes recibir daño y moverte/jugar normal, pero JAMÁS te tumban.
     - Hotkey Ctrl+R para activar/desactivar. F4 para mostrar/ocultar GUI.
-    - Compatible con respawn y casi todos los juegos.
+    - Auto-respawn compatible.
+    - GUI pequeña, draggable y visualmente clara.
 --]]
 
 local Players = game:GetService("Players")
@@ -16,6 +17,7 @@ local enabled = true
 local guiVisible = true
 
 local allConns = {}
+
 local function disconnectAll()
     for _,c in pairs(allConns) do
         if c and c.Connected then pcall(function() c:Disconnect() end) end
@@ -27,11 +29,12 @@ local function blockRagdoll()
     local char = player.Character
     if not char then return end
     local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-    if not humanoid then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not root then return end
 
     disconnectAll()
 
-    -- Lista de estados peligrosos
+    -- Estados peligrosos a bloquear
     local blockStates = {
         [Enum.HumanoidStateType.Ragdoll] = true,
         [Enum.HumanoidStateType.Physics] = true,
@@ -41,26 +44,23 @@ local function blockRagdoll()
         [Enum.HumanoidStateType.Seated] = true
     }
 
-    -- Reparación instantánea (cada frame)
+    -- Reparación cada frame
     table.insert(allConns, RunService.Heartbeat:Connect(function()
         if not enabled then return end
-        if humanoid.PlatformStand then humanoid.PlatformStand = false end
-        if humanoid.Sit then humanoid.Sit = false end
+        -- Forzar estado "Running" si intentan tumbarte
         local state = humanoid:GetState()
         if blockStates[state] then
             humanoid:ChangeState(Enum.HumanoidStateType.Running)
         end
-        -- Además, limpia velocidades físicas pero permite saltos y movimiento
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.AssemblyAngularVelocity = Vector3.new(0,0,0)
-            -- Permite saltos, pero limita el empuje en XZ
-            root.AssemblyLinearVelocity = Vector3.new(
-                math.clamp(root.AssemblyLinearVelocity.X, -32, 32),
-                root.AssemblyLinearVelocity.Y,
-                math.clamp(root.AssemblyLinearVelocity.Z, -32, 32)
-            )
-        end
+        if humanoid.PlatformStand then humanoid.PlatformStand = false end
+        if humanoid.Sit then humanoid.Sit = false end
+        -- Limitar velocities físicas pero permitir saltos
+        root.AssemblyAngularVelocity = Vector3.new(0,0,0)
+        root.AssemblyLinearVelocity = Vector3.new(
+            math.clamp(root.AssemblyLinearVelocity.X, -35, 35),
+            root.AssemblyLinearVelocity.Y, -- permite saltos normales
+            math.clamp(root.AssemblyLinearVelocity.Z, -35, 35)
+        )
     end))
 
     -- Reparación en cambios de estado
@@ -71,7 +71,7 @@ local function blockRagdoll()
         end
     end))
 
-    -- Reparación en propiedades
+    -- Reparación en cambios de propiedades peligrosas
     table.insert(allConns, humanoid:GetPropertyChangedSignal("PlatformStand"):Connect(function()
         if enabled and humanoid.PlatformStand then
             humanoid.PlatformStand = false
@@ -99,8 +99,8 @@ local function createMiniGUI()
     gui.Enabled = guiVisible
 
     local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.new(0, 195, 0, 60)
-    frame.Position = UDim2.new(0, 32, 0, 96)
+    frame.Size = UDim2.new(0, 210, 0, 65)
+    frame.Position = UDim2.new(0, 38, 0, 100)
     frame.BackgroundColor3 = Color3.fromRGB(32, 38, 54)
     frame.BorderSizePixel = 0
     frame.Active = true
@@ -108,17 +108,17 @@ local function createMiniGUI()
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
     local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, 0, 0, 20)
+    title.Size = UDim2.new(1, 0, 0, 22)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.Code
-    title.TextSize = 15
+    title.TextSize = 16
     title.TextColor3 = Color3.fromRGB(0, 220, 255)
-    title.Text = "Anti-Ragdoll VIP"
+    title.Text = "Anti-Ragdoll/Knock VIP"
 
     local toggle = Instance.new("TextButton", frame)
-    toggle.Size = UDim2.new(0.89, 0, 0, 22)
-    toggle.Position = UDim2.new(0.055, 0, 0, 27)
+    toggle.Size = UDim2.new(0.9, 0, 0, 23)
+    toggle.Position = UDim2.new(0.05, 0, 0, 29)
     toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,255,100) or Color3.fromRGB(190,60,60)
     toggle.TextColor3 = Color3.new(1,1,1)
     toggle.Font = Enum.Font.Code
@@ -135,7 +135,7 @@ local function createMiniGUI()
 
     local info = Instance.new("TextLabel", frame)
     info.Size = UDim2.new(1, 0, 0, 15)
-    info.Position = UDim2.new(0, 0, 0, 51)
+    info.Position = UDim2.new(0, 0, 0, 54)
     info.BackgroundTransparency = 1
     info.Font = Enum.Font.Code
     info.TextSize = 12
@@ -160,7 +160,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
         enabled = not enabled
-        print(enabled and "🟢 Anti-Ragdoll ACTIVADO" or "🔴 Anti-Ragdoll DESACTIVADO")
+        print(enabled and "🟢 Anti-Ragdoll/Knock ACTIVADO" or "🔴 Anti-Ragdoll/Knock DESACTIVADO")
         if enabled then blockRagdoll() else disconnectAll() end
         createMiniGUI()
     end
@@ -173,4 +173,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("🛡️ Anti-Ragdoll Ultra Robusto ACTIVADO: puedes ser golpeado pero jamás caerás ni entrarás en ragdoll.")
+print("🛡️ Anti-Ragdoll/Knockback VIP Ultra Robusto ACTIVADO: NO te pueden tumbar ni dejar ragdoll, aunque te peguen.")
