@@ -1,11 +1,10 @@
 --[[
-    ANTI-RAGDOLL ANTI-KNOCKBACK VIP ULTRA ROBUSTO
-    - Español en GUI y mensajes.
-    - Evita 100% ragdoll, stun, knockback, física, platformstand, sit, gettingup, fallingdown.
-    - Puedes recibir daño y moverte/jugar normal, pero JAMÁS te tumban.
-    - Hotkey Ctrl+R para activar/desactivar. F4 para mostrar/ocultar GUI.
-    - Auto-respawn compatible.
-    - GUI pequeña, draggable y visualmente clara.
+    ANTI-RAGDOLL/ANTI-KNOCKBACK VIP para juegos como Steal a Brainrot, Da Hood, etc.
+    - No te tumba ningún golpe, explosión ni stun.
+    - Puedes moverte, saltar y recibir daño normalmente, pero jamás ragdoll ni platformstand.
+    - GUI pequeña, draggable y clara.
+    - Ctrl+R activa/desactiva protección, F4 muestra/oculta GUI.
+    - Compatible con respawn.
 --]]
 
 local Players = game:GetService("Players")
@@ -54,12 +53,12 @@ local function blockRagdoll()
         end
         if humanoid.PlatformStand then humanoid.PlatformStand = false end
         if humanoid.Sit then humanoid.Sit = false end
-        -- Limitar velocities físicas pero permitir saltos
+        -- Limitar velocities físicas (permite saltos y movimiento, pero no knockback fuerte)
         root.AssemblyAngularVelocity = Vector3.new(0,0,0)
         root.AssemblyLinearVelocity = Vector3.new(
-            math.clamp(root.AssemblyLinearVelocity.X, -35, 35),
-            root.AssemblyLinearVelocity.Y, -- permite saltos normales
-            math.clamp(root.AssemblyLinearVelocity.Z, -35, 35)
+            math.clamp(root.AssemblyLinearVelocity.X, -36, 36),
+            math.clamp(root.AssemblyLinearVelocity.Y, -75, 75),
+            math.clamp(root.AssemblyLinearVelocity.Z, -36, 36)
         )
     end))
 
@@ -88,7 +87,7 @@ end
 -- GUI Minimalista
 -----------------------
 local function createMiniGUI()
-    local guiName = "AntiRagdollMiniGUI"
+    local guiName = "AntiRagdollBrainrotMiniGUI"
     local gui = game:GetService("CoreGui"):FindFirstChild(guiName) or player.PlayerGui:FindFirstChild(guiName)
     if gui then gui:Destroy() end
 
@@ -114,7 +113,7 @@ local function createMiniGUI()
     title.Font = Enum.Font.Code
     title.TextSize = 16
     title.TextColor3 = Color3.fromRGB(0, 220, 255)
-    title.Text = "Anti-Ragdoll/Knock VIP"
+    title.Text = "Anti-Ragdoll/Knock Brainrot"
 
     local toggle = Instance.new("TextButton", frame)
     toggle.Size = UDim2.new(0.9, 0, 0, 23)
@@ -167,10 +166,10 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     -- F4 para mostrar/ocultar GUI
     if input.KeyCode == Enum.KeyCode.F4 then
         guiVisible = not guiVisible
-        local guiName = "AntiRagdollMiniGUI"
+        local guiName = "AntiRagdollBrainrotMiniGUI"
         local gui = game:GetService("CoreGui"):FindFirstChild(guiName) or player.PlayerGui:FindFirstChild(guiName)
         if gui then gui.Enabled = guiVisible end
     end
 end)
 
-print("🛡️ Anti-Ragdoll/Knockback VIP Ultra Robusto ACTIVADO: NO te pueden tumbar ni dejar ragdoll, aunque te peguen.")
+print("🛡️ Anti-Ragdoll/Knockback VIP para STEAL A BRAINROT ACTIVADO: no te pueden tumbar aunque te peguen.")
