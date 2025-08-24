@@ -1,24 +1,19 @@
---[[
-Anti-Knockback VIP Ultra Robusto y Suave
-- Español en textos, variables en inglés
-- Corrige knockback, stun, platformstand, freeze y ragdoll SIN dejarte rígido ni impedir movimiento natural
-- GUI pequeña, draggable, siempre visible
-- Hotkey F4 para mostrar/ocultar GUI, Ctrl+K para activar/desactivar
-- Mantiene saltos, caídas y animaciones normales
-]]
+--[[ 
+    ANTI-RAGDOLL ULTRA ROBUSTO
+    - Español en GUI y mensajes.
+    - No te caes, no te tumban, no te quedas ragdoll ni physics ni platformstand.
+    - Puedes moverte, saltar, correr y recibir daño normalmente.
+    - Hotkey Ctrl+R para activar/desactivar. F4 para mostrar/ocultar GUI.
+    - Compatible con respawn y casi todos los juegos.
+--]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
--- Configuración
 local enabled = true
 local guiVisible = true
-local repairSoftness = 0.33  -- 0 = instantáneo, 1 = ultra suave
-local posTolerance = 2.1     -- Distancia máxima permitida antes de reparar (studs)
-local rotTolerance = 0.22    -- Diferencia máxima de rotación antes de reparar
-local repairTime = 0.10      -- Segundos para corregir suavemente
 
 local allConns = {}
 local function disconnectAll()
@@ -28,93 +23,72 @@ local function disconnectAll()
     table.clear(allConns)
 end
 
----------------------
--- Protección Física
----------------------
-local function repairPhysics()
+local function blockRagdoll()
     local char = player.Character
     if not char then return end
     local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not root then return end
+    if not humanoid then return end
 
     disconnectAll()
 
-    -- Historial de CFrame válido
-    local lastGoodCFrame = root.CFrame
-    local lastCFrame = root.CFrame
-    local repairing = false
+    -- Lista de estados peligrosos
+    local blockStates = {
+        [Enum.HumanoidStateType.Ragdoll] = true,
+        [Enum.HumanoidStateType.Physics] = true,
+        [Enum.HumanoidStateType.PlatformStand] = true,
+        [Enum.HumanoidStateType.FallingDown] = true,
+        [Enum.HumanoidStateType.GettingUp] = true,
+        [Enum.HumanoidStateType.Seated] = true
+    }
 
-    table.insert(allConns, RunService.Heartbeat:Connect(function(dt)
+    -- Reparación instantánea (cada frame)
+    table.insert(allConns, RunService.Heartbeat:Connect(function()
         if not enabled then return end
-
-        -- Elimina PlatformStand y Sit si aparecen (anti stun, anti ragdoll)
         if humanoid.PlatformStand then humanoid.PlatformStand = false end
         if humanoid.Sit then humanoid.Sit = false end
-        if humanoid:GetState() == Enum.HumanoidStateType.Physics or humanoid:GetState() == Enum.HumanoidStateType.Ragdoll then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-
-        -- No reparar si saltas o caes
         local state = humanoid:GetState()
-        if state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall then
-            lastCFrame = root.CFrame
-            if humanoid.FloorMaterial ~= Enum.Material.Air then
-                lastGoodCFrame = root.CFrame
-            end
-            return
+        if blockStates[state] then
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
         end
-
-        -- Si hubo un empuje grande, repara suavemente posición y rotación
-        if not repairing then
-            local posDiff = (root.Position - lastCFrame.Position).Magnitude
-            local rotDiff = (root.CFrame.LookVector - lastCFrame.LookVector).Magnitude
-            if posDiff > posTolerance or rotDiff > rotTolerance then
-                repairing = true
-                local startCF = root.CFrame
-                local endCF = lastGoodCFrame
-                local t = 0
-                while t < repairTime do
-                    if not enabled then break end
-                    t = t + RunService.Heartbeat:Wait()
-                    local alpha = math.min(t/repairTime, 1) * repairSoftness
-                    root.CFrame = startCF:Lerp(endCF, alpha)
-                end
-                repairing = false
-            end
+        -- Además, limpia velocidades físicas pero permite saltos y movimiento
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.AssemblyAngularVelocity = Vector3.new(0,0,0)
+            -- Permite saltos, pero limita el empuje en XZ
+            root.AssemblyLinearVelocity = Vector3.new(
+                math.clamp(root.AssemblyLinearVelocity.X, -32, 32),
+                root.AssemblyLinearVelocity.Y,
+                math.clamp(root.AssemblyLinearVelocity.Z, -32, 32)
+            )
         end
-
-        -- Guarda último CFrame válido solo si en el suelo
-        if humanoid.FloorMaterial ~= Enum.Material.Air then
-            lastGoodCFrame = root.CFrame
-            lastCFrame = root.CFrame
-        else
-            lastCFrame = root.CFrame
-        end
-
-        -- Elimina knockback físico suave (pero deja saltos)
-        root.AssemblyAngularVelocity = Vector3.new(0,0,0)
-        root.AssemblyLinearVelocity = Vector3.new(
-            math.clamp(root.AssemblyLinearVelocity.X, -30, 30),
-            root.AssemblyLinearVelocity.Y,
-            math.clamp(root.AssemblyLinearVelocity.Z, -30, 30)
-        )
     end))
 
-    -- Reparar PlatformStand/Sit instantáneo
+    -- Reparación en cambios de estado
+    table.insert(allConns, humanoid.StateChanged:Connect(function(_, newState)
+        if not enabled then return end
+        if blockStates[newState] then
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end))
+
+    -- Reparación en propiedades
     table.insert(allConns, humanoid:GetPropertyChangedSignal("PlatformStand"):Connect(function()
-        if enabled and humanoid.PlatformStand then humanoid.PlatformStand = false end
+        if enabled and humanoid.PlatformStand then
+            humanoid.PlatformStand = false
+        end
     end))
     table.insert(allConns, humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
-        if enabled and humanoid.Sit then humanoid.Sit = false end
+        if enabled and humanoid.Sit then
+            humanoid.Sit = false
+        end
     end))
 end
 
-------------------
+-----------------------
 -- GUI Minimalista
-------------------
+-----------------------
 local function createMiniGUI()
-    local guiName = "AntiKnockbackVIPMiniGUI"
+    local guiName = "AntiRagdollMiniGUI"
     local gui = game:GetService("CoreGui"):FindFirstChild(guiName) or player.PlayerGui:FindFirstChild(guiName)
     if gui then gui:Destroy() end
 
@@ -125,30 +99,30 @@ local function createMiniGUI()
     gui.Enabled = guiVisible
 
     local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.new(0, 220, 0, 85)
-    frame.Position = UDim2.new(0, 30, 0, 90)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 32, 46)
+    frame.Size = UDim2.new(0, 195, 0, 60)
+    frame.Position = UDim2.new(0, 32, 0, 96)
+    frame.BackgroundColor3 = Color3.fromRGB(32, 38, 54)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Draggable = true
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
     local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, 0, 0, 24)
+    title.Size = UDim2.new(1, 0, 0, 20)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.Code
-    title.TextSize = 17
+    title.TextSize = 15
     title.TextColor3 = Color3.fromRGB(0, 220, 255)
-    title.Text = "Anti-Knockback VIP"
+    title.Text = "Anti-Ragdoll VIP"
 
     local toggle = Instance.new("TextButton", frame)
-    toggle.Size = UDim2.new(0.93, 0, 0, 26)
-    toggle.Position = UDim2.new(0.035, 0, 0, 30)
+    toggle.Size = UDim2.new(0.89, 0, 0, 22)
+    toggle.Position = UDim2.new(0.055, 0, 0, 27)
     toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,255,100) or Color3.fromRGB(190,60,60)
     toggle.TextColor3 = Color3.new(1,1,1)
     toggle.Font = Enum.Font.Code
-    toggle.TextSize = 15
+    toggle.TextSize = 13
     toggle.Text = enabled and "PROTECCIÓN ACTIVADA" or "PROTECCIÓN DESACTIVADA"
     toggle.BorderSizePixel = 0
     Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 7)
@@ -156,51 +130,47 @@ local function createMiniGUI()
         enabled = not enabled
         toggle.Text = enabled and "PROTECCIÓN ACTIVADA" or "PROTECCIÓN DESACTIVADA"
         toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,255,100) or Color3.fromRGB(190,60,60)
-        if enabled then repairPhysics() else disconnectAll() end
+        if enabled then blockRagdoll() else disconnectAll() end
     end)
 
     local info = Instance.new("TextLabel", frame)
-    info.Size = UDim2.new(1, 0, 0, 20)
-    info.Position = UDim2.new(0, 0, 0, 62)
+    info.Size = UDim2.new(1, 0, 0, 15)
+    info.Position = UDim2.new(0, 0, 0, 51)
     info.BackgroundTransparency = 1
     info.Font = Enum.Font.Code
-    info.TextSize = 13
+    info.TextSize = 12
     info.TextColor3 = Color3.fromRGB(160, 200, 255)
-    info.Text = "F4: ocultar/mostrar GUI | Ctrl+K: activar/desactivar"
-
-    -- Hotkey para ocultar/mostrar GUI
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
-        if input.KeyCode == Enum.KeyCode.F4 then
-            guiVisible = not guiVisible
-            gui.Enabled = guiVisible
-        end
-    end)
+    info.Text = "Ctrl+R: activar/desactivar | F4: mostrar/ocultar"
 end
 
---------------------
+----------------------
 -- Respawn y Hotkeys
---------------------
+----------------------
 player.CharacterAdded:Connect(function()
     wait(1)
-    if enabled then repairPhysics() end
+    if enabled then blockRagdoll() end
     createMiniGUI()
 end)
 
-if player.Character then
-    repairPhysics()
-end
+if player.Character then blockRagdoll() end
 createMiniGUI()
 
--- Hotkey VIP Ctrl+K para activar/desactivar protección
+-- Hotkey Ctrl+R para activar/desactivar
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if input.KeyCode == Enum.KeyCode.K and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+    if input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
         enabled = not enabled
-        print(enabled and "🟢 Anti-Knockback VIP ACTIVADO" or "🔴 Anti-Knockback VIP DESACTIVADO")
-        if enabled then repairPhysics() else disconnectAll() end
+        print(enabled and "🟢 Anti-Ragdoll ACTIVADO" or "🔴 Anti-Ragdoll DESACTIVADO")
+        if enabled then blockRagdoll() else disconnectAll() end
         createMiniGUI()
+    end
+    -- F4 para mostrar/ocultar GUI
+    if input.KeyCode == Enum.KeyCode.F4 then
+        guiVisible = not guiVisible
+        local guiName = "AntiRagdollMiniGUI"
+        local gui = game:GetService("CoreGui"):FindFirstChild(guiName) or player.PlayerGui:FindFirstChild(guiName)
+        if gui then gui.Enabled = guiVisible end
     end
 end)
 
-print("🎖️ Anti-Knockback VIP Ultra Robusto y Suave ACTIVADO - Puedes moverte y saltar normalmente, cero retroceso ni stun.")
+print("🛡️ Anti-Ragdoll Ultra Robusto ACTIVADO: puedes ser golpeado pero jamás caerás ni entrarás en ragdoll.")
